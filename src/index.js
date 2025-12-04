@@ -1,35 +1,51 @@
 #!/usr/bin/env node
-// The above "shebang" allows this file to be run directly as a CLI tool
-// on Unix-like systems if the file has executable permissions.
+// The shebang allows this file to be executed as a standalone CLI program
+// on Unix-like systems (Linux/macOS). When marked as executable, a user
+// can run `./index.js` directly without calling `node` manually.
 
-// Import the Commander library for building command-line interfaces
+// Commander is a small framework for building CLI tools. It handles
+// parsing commands, options, help text, and dispatching actions.
 import { program } from "commander";
 
-// Import the collector function to retrieve network connections
+// Retrieves a one-time snapshot of active network connections.
+// This is used for the basic "view only" mode.
 import { getConnectionsSnapshot } from "./core/collector.js";
 
-// Import the CLI table renderer to display connections nicely
+// Renders connection data in a terminal-friendly table format.
+// This does not modify connections — it only formats them for output.
 import { renderTable } from "./ui/cliTable.js";
 
-// Define a new CLI command called "start"
+// Starts the continuous live monitor (phase 3).
+// Not used in the simple snapshot command yet, but imported for later use.
+import { startMonitor } from "./core/monitor.js";
+
+// Define the CLI command: "start"
+// This appears as `mini-firewall start` when the package is installed globally.
+// Each `.command()` block registers one runnable operation.
 program
   .command("start")
-  .description("Start mini-firewall and show snapshot") // Brief description for help
-  .option("--dry-run", "Do not apply any rules", true) // CLI flag to indicate dry-run mode
+  .description("Start mini-firewall and show snapshot") // Displayed in --help
+  .option(
+    "--dry-run",
+    "Do not apply any rules (rules are evaluated but not enforced)",
+    true
+  )
   .action(async (opts) => {
-    // This function executes when the "start" command is called
+    // This function runs when the user executes:
+    //     mini-firewall start
 
-    console.log("mini-firewall starting..."); // Log startup message
+    console.log("mini-firewall starting...");
 
-    // Retrieve the current network connections snapshot
-    // This is an async function returning an array of connection objects
+    // Fetch the current list of TCP connections from the system.
+    // The collector normalizes platform output into a consistent structure.
     const connections = await getConnectionsSnapshot();
 
-    // Render the connections snapshot in a table in the terminal
-    // Uses cli-table3 formatting via renderTable()
+    // Render the collected data as a formatted table.
+    // By default this shows: PID, process name, local/remote address, etc.
     renderTable(connections);
   });
 
-// Parse the command-line arguments and execute the matching command
-// This is required to make Commander actually run the defined CLI commands
+// Commander reads `process.argv`, matches commands and flags,
+// and executes the associated `.action()` blocks.
+// Without this call, the CLI would not respond to user input.
 program.parse(process.argv);
