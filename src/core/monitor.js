@@ -1,5 +1,6 @@
 import { getConnectionSnapshot } from "./collector.js";
 import { renderTable } from "../ui/cliTable.js";
+import { enrichConnection } from "./enrichment.js";
 
 /**
  * Evaluates firewall rules against a connection.
@@ -34,7 +35,8 @@ export async function startMonitor(options = {}) {
     // ---------------------------------------------------------
     // 1. Fetch the latest list of active TCP connections
     // ---------------------------------------------------------
-    const currentList = await getConnectionSnapshot();
+    const raw = await getConnectionSnapshot();
+    const currentList = enrichConnection(raw);
 
     // ---------------------------------------------------------
     // 2. Convert array → Map for efficient comparison by ID

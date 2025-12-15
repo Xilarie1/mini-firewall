@@ -1,0 +1,15 @@
+[
+  {
+    "type": "deny",
+    "process": "chrome.exe",
+    "remotePort": 443
+  },
+  {
+    "type": "deny",
+    "remoteIp": "8.8.8.8"
+  },
+  {
+    "type": "allow",
+    "process": "svchost.exe"
+  }
+]
