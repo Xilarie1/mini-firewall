@@ -19,6 +19,8 @@ import { renderTable } from "./ui/cliTable.js";
 // Not used in the simple snapshot command yet, but imported for later use.
 import { startMonitor } from "./core/monitor.js";
 
+import { evaluateConnection } from "../rules/engine.js";
+
 // Define the CLI command: "start"
 // This appears as `mini-firewall start` when the package is installed globally.
 // Each `.command()` block registers one runnable operation.
@@ -49,3 +51,9 @@ program
 // and executes the associated `.action()` blocks.
 // Without this call, the CLI would not respond to user input.
 program.parse(process.argv);
+
+newConnections.forEach((conn) => {
+  const result = evaluateConnection(conn);
+  conn.ruleHit = result.hit;
+  conn.matchedRule = result.rule;
+});
