@@ -57,3 +57,12 @@ newConnections.forEach((conn) => {
   conn.ruleHit = result.hit;
   conn.matchedRule = result.rule;
 });
+
+import { rollbackAll } from "./core/rollback.js";
+
+program
+  .command("rollback")
+  .description("Undo all firewall rules created by mini-firewall")
+  .action(async () => {
+    await rollbackAll();
+  });
