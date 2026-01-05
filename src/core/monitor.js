@@ -103,3 +103,10 @@ export async function startMonitor(options = {}) {
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
+import { detect } from "./detector.js";
+
+newConnections.forEach((conn) => {
+  const detection = detect(conn);
+  conn.threatScore = detection.score;
+  conn.threatLevel = detection.level;
+});
