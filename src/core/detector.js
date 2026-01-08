@@ -45,3 +45,17 @@ export function detect(conn) {
 
   return result;
 }
+
+import { getReputation } from "./reputation.js";
+
+const rep = getReputation(conn.remoteIp);
+
+if (rep.tor) {
+  score += 35;
+  hits.push("TOR_NODE");
+}
+
+if (rep.bogon) {
+  score += 20;
+  hits.push("BOGON_RANGE");
+}
