@@ -26,3 +26,6 @@ temp/
 
 # Environment / secret files
 .env
+
+# Firewall runtime state (do NOT commit)
+src/state/*.json
