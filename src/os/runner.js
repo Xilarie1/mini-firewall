@@ -19,3 +19,12 @@ export async function runFirewallCommand(cmd, meta, options = {}) {
   registerRule(meta);
   return true;
 }
+
+import { decide } from "./decision.js";
+import { applyRule } from "../os/runner.js";
+
+const action = decide(conn.remoteIp, threatScore);
+
+if (action === "block") {
+  applyRule("block-ip", conn.remoteIp);
+}
