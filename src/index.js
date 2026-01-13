@@ -20,6 +20,11 @@ import { renderTable } from "./ui/cliTable.js";
 import { startMonitor } from "./core/monitor.js";
 
 import { evaluateConnection } from "../rules/engine.js";
+import { rollbackAll } from "./core/rollback.js";
+import { startGuardian } from "./core/guardian.js";
+import { startMonitor } from "./core/monitor.js";
+
+startGuardian();
 
 // Define the CLI command: "start"
 // This appears as `mini-firewall start` when the package is installed globally.
@@ -57,8 +62,6 @@ newConnections.forEach((conn) => {
   conn.ruleHit = result.hit;
   conn.matchedRule = result.rule;
 });
-
-import { rollbackAll } from "./core/rollback.js";
 
 program
   .command("rollback")

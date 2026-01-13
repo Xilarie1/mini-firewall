@@ -1,6 +1,7 @@
 import { getConnectionSnapshot } from "./collector.js";
 import { renderTable } from "../ui/cliTable.js";
 import { enrichConnection } from "./enrichment.js";
+import { detect } from "./detector.js";
 
 /**
  * Evaluates firewall rules against a connection.
@@ -103,7 +104,6 @@ export async function startMonitor(options = {}) {
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
-import { detect } from "./detector.js";
 
 newConnections.forEach((conn) => {
   const detection = detect(conn);

@@ -1,6 +1,7 @@
 import { signatures } from "../signatures/basic.js";
 import { recordEvent } from "../state/events.js";
 import { scoreConnection } from "./heuristics.js";
+import { getReputation } from "./reputation.js";
 
 /**
  * Returns a detection result for a connection.
@@ -45,8 +46,6 @@ export function detect(conn) {
 
   return result;
 }
-
-import { getReputation } from "./reputation.js";
 
 const rep = getReputation(conn.remoteIp);
 

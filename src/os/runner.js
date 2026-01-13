@@ -2,6 +2,8 @@ import { exec } from "child_process";
 import util from "util";
 import { isArmed } from "../core/arm.js";
 import { registerRule } from "../state/registry.js";
+import { decide } from "./decision.js";
+import { applyRule } from "../os/runner.js";
 
 const execAsync = util.promisify(exec);
 
@@ -19,9 +21,6 @@ export async function runFirewallCommand(cmd, meta, options = {}) {
   registerRule(meta);
   return true;
 }
-
-import { decide } from "./decision.js";
-import { applyRule } from "../os/runner.js";
 
 const action = decide(conn.remoteIp, threatScore);
 

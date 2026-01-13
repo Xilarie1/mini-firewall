@@ -1,4 +1,5 @@
 import fs from "fs";
+import { atomicWrite } from "../utils/atomicWrite";
 
 const PATH = "./src/state/offenders.json";
 
@@ -6,7 +7,7 @@ function load() {
   return JSON.parse(fs.readFileSync(PATH, "utf8"));
 }
 function save(data) {
-  fs.writeFileSync(PATH, JSON.stringify(data, null, 2));
+  atomicWrite(PATH, JSON.stringify(data, null, 2));
 }
 
 export function record(ip) {

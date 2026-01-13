@@ -1,4 +1,5 @@
 import fs from "fs";
+import { atomicWrite } from "../utils/atomicWrite";
 
 const PATH = "./src/state/events.json";
 
@@ -10,5 +11,5 @@ export function loadEvents() {
 export function recordEvent(evt) {
   const list = loadEvents();
   list.push({ ...evt, time: Date.now() });
-  fs.writeFileSync(PATH, JSON.stringify(list, null, 2));
+  atomicWrite(PATH, JSON.stringify(list, null, 2));
 }
