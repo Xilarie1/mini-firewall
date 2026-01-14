@@ -23,6 +23,7 @@ import { evaluateConnection } from "../rules/engine.js";
 import { rollbackAll } from "./core/rollback.js";
 import { startGuardian } from "./core/guardian.js";
 import { startMonitor } from "./core/monitor.js";
+import { registerRuleCLI } from "./rules/cli.js";
 
 startGuardian();
 
@@ -69,3 +70,5 @@ program
   .action(async () => {
     await rollbackAll();
   });
+
+registerRuleCLI(program);
