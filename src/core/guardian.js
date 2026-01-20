@@ -2,7 +2,13 @@
 
 import { checkHeartbeat } from "./heartbeat.js";
 import { rollbackAll, rollbackRule } from "../os/runner.js";
-import { getActiveRules, deactivateRule, promoteRule } from "../rules/store.js";
+import {
+  getActiveRules,
+  deactivateRule,
+  promoteRule,
+  listRules,
+} from "../rules/store.js";
+import { computeScore } from "../rules/health.js";
 
 const INTERVAL = 30_000; // Guardian heartbeat interval (30s)
 
@@ -10,6 +16,15 @@ const INTERVAL = 30_000; // Guardian heartbeat interval (30s)
 const MAX_RULE_AGE = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILURES = 3; // auto rollback threshold
 
+/**
+ * Starts the Guardian safety & governance loop.
+ * Runs continuously and enforces:
+ * - System heartbeat safety
+ * - Rule expiration
+ * - Rule rollback
+ * - Rule promotion
+ * - Rule health scoring
+ */
 export function startGuardian() {
   setInterval(async () => {
     console.log("[guardian] heartbeat tick");
@@ -48,5 +63,29 @@ export function startGuardian() {
         promoteRule(rule.tag);
       }
     }
+
+    // ---- RULE HEALTH SCORING ----
+    await evaluateRuleHealth();
   }, INTERVAL);
+}
+
+/**
+ * Evaluates long-term rule health and promotes/deactivates automatically
+ */
+export async function evaluateRuleHealth() {
+  const rules = listRules();
+
+  for (const rule of rules) {
+    const score = computeScore(rule.tag);
+
+    if (score > 25 && rule.temporary) {
+      console.log(`[guardian] Health promote ${rule.tag} (score=${score})`);
+      promoteRule(rule.tag);
+    }
+
+    if (score < -10) {
+      console.warn(`[guardian] Health deactivate ${rule.tag} (score=${score})`);
+      deactivateRule(rule.tag);
+    }
+  }
 }

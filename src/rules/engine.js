@@ -1,4 +1,5 @@
 import { loadRules } from "./loader.js";
+import { recordHit } from "./health.js";
 
 /**
  * Checks if one rule matches a connection.
@@ -18,7 +19,7 @@ function ruleMatchesConnection(conn, rule) {
   // Rule expired (TTL safety)
   if (rule.expiresAt && rule.expiresAt <= Date.now()) return false;
 
-  // --- Existing flat matching logic ---
+  // --- Flat matching logic ---
   if (rule.process && conn.processName !== rule.process) return false;
   if (rule.pid && conn.pid !== rule.pid) return false;
 
@@ -36,6 +37,7 @@ function ruleMatchesConnection(conn, rule) {
 
 /**
  * Evaluates all rules against a connection.
+ * If a rule matches, record a health hit.
  *
  * @param {object} conn - The connection to test
  * @returns {object} - { hit: boolean, rule: matchedRule|null }
@@ -45,6 +47,8 @@ export function evaluateConnection(conn) {
 
   for (const rule of rules) {
     if (ruleMatchesConnection(conn, rule)) {
+      recordHit(rule.tag);
+
       return {
         hit: true,
         rule,
