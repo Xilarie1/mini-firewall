@@ -1,5 +1,6 @@
 import { loadRules } from "./loader.js";
 import { recordHit } from "./health.js";
+import { recordThreat } from "./threatMemory.js";
 
 /**
  * Checks if one rule matches a connection.
@@ -47,18 +48,15 @@ export function evaluateConnection(conn) {
 
   for (const rule of rules) {
     if (ruleMatchesConnection(conn, rule)) {
+      // Phase 10.7 — health learning
       recordHit(rule.tag);
 
-      return {
-        hit: true,
-        rule,
-      };
+      // Phase 10.8 — threat memory
+      recordThreat(conn, rule);
+
+      return { hit: true, rule };
     }
   }
 
-  // No rule matched
-  return {
-    hit: false,
-    rule: null,
-  };
+  return { hit: false, rule: null };
 }
