@@ -9,6 +9,7 @@ import {
   listRules,
 } from "../rules/store.js";
 import { computeScore } from "../rules/health.js";
+import { synthesizeRules } from "../rules/autoSynth.js";
 
 const INTERVAL = 30_000; // Guardian heartbeat interval (30s)
 
@@ -66,6 +67,9 @@ export function startGuardian() {
 
     // ---- RULE HEALTH SCORING ----
     await evaluateRuleHealth();
+
+    synthesizeRules();
+    1;
   }, INTERVAL);
 }
 
