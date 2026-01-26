@@ -10,6 +10,8 @@ import {
 } from "../rules/store.js";
 import { computeScore } from "../rules/health.js";
 import { synthesizeRules } from "../rules/autoSynth.js";
+import { scoreThreats } from "../rules/threatScorer.js";
+import { addRule } from "../rules/store.js";
 
 const INTERVAL = 30_000; // Guardian heartbeat interval (30s)
 
@@ -91,5 +93,27 @@ export async function evaluateRuleHealth() {
       console.warn(`[guardian] Health deactivate ${rule.tag} (score=${score})`);
       deactivateRule(rule.tag);
     }
+  }
+}
+
+const scored = scoreThreats();
+
+for (const threat of scored) {
+  if (threat.confidence > 30 && !threat.ruleCreated) {
+    console.log(
+      `[guardian] High confidence threat — auto blocking ${threat.sample.remoteIp}`,
+    );
+
+    addRule({
+      tag: `conf-block-${threat.sample.remoteIp}-${threat.sample.remotePort}`,
+      remoteIp: threat.sample.remoteIp,
+      remotePort: threat.sample.remotePort,
+      process: threat.sample.processName || null,
+      temporary: false,
+      enabled: true,
+      createdAt: Date.now(),
+    });
+
+    threat.ruleCreated = true;
   }
 }
