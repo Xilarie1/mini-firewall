@@ -1,6 +1,7 @@
 import { listRules, removeRule } from "../state/ruleStore.js";
 import { runCommand } from "./runner.js";
 import { recordRollback } from "../rules/health.js";
+import { buildDeleteCommand } from "./builders.js"; // <-- make sure this exists
 
 /**
  * Roll back ALL firewall rules created by mini-firewall.
@@ -12,14 +13,22 @@ export async function rollbackAll() {
   for (const id of Object.keys(rules)) {
     const rule = rules[id];
 
-    if (rule.tag) {
-      recordRollback(rule.tag);
+    try {
+      // Build OS delete command based on rule.type
+      const delCmd = buildDeleteCommand(rule);
+
+      // Execute rollback command
+      await runCommand(delCmd);
+
+      // Record rollback only AFTER success
+      if (rule.tag) {
+        recordRollback(rule.tag);
+      }
+
+      // Remove rule from store
+      removeRule(id);
+    } catch (err) {
+      console.error(`[rollback] Failed to rollback rule ${rule.tag}:`, err);
     }
-
-    // Build OS delete command based on rule.type
-    const delCmd = buildDeleteCommand(rule); // your OS-specific builder
-    await runCommand(delCmd);
-
-    removeRule(id);
   }
 }

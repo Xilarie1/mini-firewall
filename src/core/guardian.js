@@ -7,11 +7,11 @@ import {
   deactivateRule,
   promoteRule,
   listRules,
+  addRule,
 } from "../rules/store.js";
 import { computeScore } from "../rules/health.js";
 import { synthesizeRules } from "../rules/autoSynth.js";
 import { scoreThreats } from "../rules/threatScorer.js";
-import { addRule } from "../rules/store.js";
 
 const INTERVAL = 30_000; // Guardian heartbeat interval (30s)
 
@@ -27,51 +27,80 @@ const MAX_FAILURES = 3; // auto rollback threshold
  * - Rule rollback
  * - Rule promotion
  * - Rule health scoring
+ * - Auto rule synthesis
+ * - Threat scoring → auto blocking
  */
 export function startGuardian() {
   setInterval(async () => {
-    console.log("[guardian] heartbeat tick");
+    try {
+      console.log("[guardian] heartbeat tick");
 
-    // ---- SYSTEM SAFETY RAIL ----
-    const ok = await checkHeartbeat();
-    if (!ok) {
-      console.error("[guardian] SYSTEM HEARTBEAT FAILED — FULL ROLLBACK");
-      rollbackAll();
-      return;
+      // ---- SYSTEM SAFETY RAIL ----
+      const ok = await checkHeartbeat();
+      if (!ok) {
+        console.error("[guardian] SYSTEM HEARTBEAT FAILED — FULL ROLLBACK");
+        await rollbackAll();
+        return;
+      }
+
+      // ---- RULE GOVERNOR ----
+      const activeRules = getActiveRules();
+
+      for (const rule of activeRules) {
+        const age = Date.now() - rule.createdAt;
+
+        // 1. Auto-expire old rules
+        if (age > MAX_RULE_AGE) {
+          console.warn(`[guardian] Expiring rule ${rule.tag}`);
+          deactivateRule(rule.tag);
+          continue;
+        }
+
+        // 2. Auto-rollback unstable rules
+        if (rule.failures >= MAX_FAILURES) {
+          console.error(`[guardian] Rolling back unstable rule ${rule.tag}`);
+          await rollbackRule(rule.tag);
+          continue;
+        }
+
+        // 3. Auto-promote stable rules
+        if (rule.hitCount > 50 && rule.failures === 0 && !rule.permanent) {
+          console.log(`[guardian] Promoting stable rule ${rule.tag}`);
+          promoteRule(rule.tag);
+        }
+      }
+
+      // ---- RULE HEALTH SCORING ----
+      await evaluateRuleHealth();
+
+      // ---- AUTO RULE SYNTHESIS ----
+      synthesizeRules();
+
+      // ---- THREAT SCORING → AUTO BLOCK ----
+      const scoredThreats = scoreThreats();
+
+      for (const threat of scoredThreats) {
+        if (threat.confidence > 30 && !threat.ruleCreated) {
+          console.log(
+            `[guardian] High confidence threat — auto blocking ${threat.sample.remoteIp}:${threat.sample.remotePort}`,
+          );
+
+          addRule({
+            tag: `conf-block-${threat.sample.remoteIp}-${threat.sample.remotePort}`,
+            remoteIp: threat.sample.remoteIp,
+            remotePort: threat.sample.remotePort,
+            process: threat.sample.processName || null,
+            temporary: false,
+            enabled: true,
+            createdAt: Date.now(),
+          });
+
+          threat.ruleCreated = true;
+        }
+      }
+    } catch (err) {
+      console.error("[guardian] loop error:", err);
     }
-
-    // ---- RULE GOVERNOR ----
-    const rules = getActiveRules();
-
-    for (const rule of rules) {
-      const age = Date.now() - rule.createdAt;
-
-      // 1. Auto-expire old rules
-      if (age > MAX_RULE_AGE) {
-        console.warn(`[guardian] Expiring rule ${rule.tag}`);
-        deactivateRule(rule.tag);
-        continue;
-      }
-
-      // 2. Auto-rollback unstable rules
-      if (rule.failures >= MAX_FAILURES) {
-        console.error(`[guardian] Rolling back unstable rule ${rule.tag}`);
-        rollbackRule(rule.tag);
-        continue;
-      }
-
-      // 3. Auto-promote stable rules
-      if (rule.hitCount > 50 && rule.failures === 0 && !rule.permanent) {
-        console.log(`[guardian] Promoting stable rule ${rule.tag}`);
-        promoteRule(rule.tag);
-      }
-    }
-
-    // ---- RULE HEALTH SCORING ----
-    await evaluateRuleHealth();
-
-    synthesizeRules();
-    1;
   }, INTERVAL);
 }
 
@@ -93,27 +122,5 @@ export async function evaluateRuleHealth() {
       console.warn(`[guardian] Health deactivate ${rule.tag} (score=${score})`);
       deactivateRule(rule.tag);
     }
-  }
-}
-
-const scored = scoreThreats();
-
-for (const threat of scored) {
-  if (threat.confidence > 30 && !threat.ruleCreated) {
-    console.log(
-      `[guardian] High confidence threat — auto blocking ${threat.sample.remoteIp}`,
-    );
-
-    addRule({
-      tag: `conf-block-${threat.sample.remoteIp}-${threat.sample.remotePort}`,
-      remoteIp: threat.sample.remoteIp,
-      remotePort: threat.sample.remotePort,
-      process: threat.sample.processName || null,
-      temporary: false,
-      enabled: true,
-      createdAt: Date.now(),
-    });
-
-    threat.ruleCreated = true;
   }
 }
