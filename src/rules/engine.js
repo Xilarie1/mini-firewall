@@ -1,6 +1,7 @@
 import { loadRules } from "./loader.js";
 import { recordHit } from "./health.js";
 import { recordThreat } from "./threatMemory.js";
+import { recordHit } from "./store.js";
 
 /**
  * Checks if one rule matches a connection.
@@ -61,3 +62,7 @@ export function evaluateConnection(conn) {
   return { hit: false, rule: null };
 }
 // dss
+
+if (result.hit) {
+  recordHit(result.rule.tag);
+}
