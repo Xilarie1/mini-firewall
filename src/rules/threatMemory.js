@@ -1,51 +1,55 @@
+// src/rules/threatMemory.js
+// Persistent Threat Memory with clustering + disk storage
+
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const DATA_PATH = path.resolve("src/state/threatMemory.json");
+// Resolve __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Internal memory map
+// File where threat memory is persisted
+const MEMORY_PATH = path.join(__dirname, "../../threatMemory.json");
+
+// In-memory store
 const memory = new Map();
 
-/**
- * Load memory from disk at startup
- */
-function loadMemory() {
-  if (!fs.existsSync(DATA_PATH)) return;
+/* ---------------- Persistence Layer ---------------- */
 
-  const raw = fs.readFileSync(DATA_PATH, "utf-8");
-  const data = JSON.parse(raw);
+function loadMemoryFromDisk() {
+  if (!fs.existsSync(MEMORY_PATH)) return;
 
-  for (const [key, value] of Object.entries(data)) {
-    memory.set(key, value);
+  const raw = fs.readFileSync(MEMORY_PATH, "utf-8");
+  const parsed = JSON.parse(raw);
+
+  for (const entry of parsed) {
+    memory.set(entry.key, entry);
   }
 }
 
-/**
- * Save memory to disk
- */
-function saveMemory() {
-  const obj = Object.fromEntries(memory.entries());
-  fs.writeFileSync(DATA_PATH, JSON.stringify(obj, null, 2));
+function saveMemoryToDisk() {
+  const arr = Array.from(memory.values());
+  fs.writeFileSync(MEMORY_PATH, JSON.stringify(arr, null, 2));
 }
 
-// Load on boot
-loadMemory();
+/* ---------------- Core API ---------------- */
 
 /**
  * Record a suspicious event in memory
- * @param {object} conn - The connection that triggered a rule
- * @param {object} rule - The rule that matched
  */
 export function recordThreat(conn, rule) {
   const key = `${conn.remoteIp}|${conn.processName || "unknown"}|${conn.remotePort}`;
 
   if (!memory.has(key)) {
     memory.set(key, {
+      key,
       count: 0,
       firstSeen: Date.now(),
       lastSeen: null,
       sample: conn,
       ruleTag: rule.tag,
+      ruleCreated: false,
     });
   }
 
@@ -53,7 +57,7 @@ export function recordThreat(conn, rule) {
   entry.count++;
   entry.lastSeen = Date.now();
 
-  saveMemory();
+  saveMemoryToDisk();
 }
 
 /**
@@ -78,3 +82,15 @@ export function isKnownThreat(conn) {
 export function listThreats() {
   return Array.from(memory.values());
 }
+
+/**
+ * Clear threat memory (optional admin tool)
+ */
+export function clearThreats() {
+  memory.clear();
+  saveMemoryToDisk();
+}
+
+/* ---------------- Init ---------------- */
+
+loadMemoryFromDisk();
